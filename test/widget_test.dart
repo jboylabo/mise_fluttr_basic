@@ -1,30 +1,88 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:mise_fluttr_basic/main.dart';
+import 'package:mise_fluttr_basic/official_identification/official_identification_widget.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('OfficialIdentificationValidator', () {
+    final validator = OfficialIdentificationValidator();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('factoryは同じインスタンスを返す', () {
+      expect(identical(validator, OfficialIdentificationValidator()), isTrue);
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('正しい電話番号ならtrueを返す', () {
+      expect(validator.isPhoneNumberValid('090-1234-5678'), isTrue);
+      expect(validator.isPhoneNumberValid('03-1234-5678'), isTrue);
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('正しくない電話番号ならfalseを返す', () {
+      expect(validator.isPhoneNumberValid('12345'), isFalse);
+      expect(validator.isPhoneNumberValid(''), isFalse);
+    });
+
+    test('すべて入力済みの場合だけcompleteになる', () {
+      expect(
+        validator.isComplete(
+          familyName: '山田',
+          givenName: '太郎',
+          phoneNumber: '090-1234-5678',
+          birthDate: DateTime(1990),
+          gender: Gender.unanswered,
+        ),
+        isTrue,
+      );
+      expect(
+        validator.isComplete(
+          familyName: '山田',
+          givenName: '',
+          phoneNumber: '090-1234-5678',
+          birthDate: DateTime(1990),
+          gender: Gender.unanswered,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('OfficialIdentificationWidget', () {
+    testWidgets('必要な入力項目と画像を表示する', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: OfficialIdentificationWidget()),
+      );
+      expect(find.byType(Image), findsOneWidget);
+      for (final text in [
+        '名字',
+        '名前',
+        '電話番号',
+        '生年月日',
+        '年齢',
+        '性別',
+        '男性',
+        '女性',
+        'その他',
+        '回答しない',
+      ]) {
+        expect(find.text(text), findsOneWidget);
+      }
+    });
+
+    testWidgets('未入力で確認するとエラーを表示する', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: OfficialIdentificationWidget()),
+      );
+      await tester.ensureVisible(find.byKey(const Key('submitButton')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('submitButton')));
+      await tester.pump();
+      for (final text in [
+        '名字を入力してください',
+        '名前を入力してください',
+        '正しい電話番号を入力してください',
+        '生年月日を選択してください',
+        '性別を選択してください',
+      ]) {
+        expect(find.text(text), findsOneWidget);
+      }
+    });
   });
 }
